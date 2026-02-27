@@ -1,0 +1,65 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Windows.Forms;
+
+namespace DataToExcel
+{
+    internal static class Program
+    {
+        /// <summary>
+        /// 应用程序的主入口点。
+        /// </summary>
+        [STAThread]
+        static void Main(string[] args)
+        {
+            // 命令行参数：--test 运行单元测试
+            // if (args.Length > 0 && args[0] == "--test")
+            // {
+            //     RunTests();
+            //     return;
+            // }
+
+            // 防止重复运行
+            Process currentProcess = Process.GetCurrentProcess();
+            Process[] processes = Process.GetProcessesByName(currentProcess.ProcessName);
+            if (processes.Length > 1)
+            {
+                MessageBox.Show("程序已在运行中！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            Application.Run(new Form1());
+        }
+
+        /// <summary>
+        /// 运行单元测试
+        /// </summary>
+        private static void RunTests()
+        {
+            Console.WriteLine("=== TSK INK 功能单元测试 ===\n");
+
+            var inkTests = new Tests.InkRuleTests();
+            inkTests.RunAllTests();
+
+            Console.WriteLine();
+
+            var stackedTests = new Tests.StackedWafersTests();
+            stackedTests.RunAllTests();
+
+            var passed = inkTests.PassedTests + stackedTests.PassedTests;
+            var failed = inkTests.FailedTests + stackedTests.FailedTests;
+            var skipped = inkTests.SkippedTests + stackedTests.SkippedTests;
+
+            Console.WriteLine($"\n总计: {passed} 通过, {failed} 失败, {skipped} 跳过");
+            if (Environment.UserInteractive && !Console.IsInputRedirected)
+            {
+                Console.WriteLine("按任意键退出...");
+                Console.ReadKey();
+            }
+        }
+    }
+}

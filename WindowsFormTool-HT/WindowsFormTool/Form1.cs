@@ -25,7 +25,8 @@ namespace DataToExcel
             Merge = 0,
             Ink = 1,
             StackedWafers = 2,
-            DpatInk = 3
+            DpatInk = 3,
+            DataFormatConversion = 4
         }
 
         private sealed class ModeUi
@@ -98,6 +99,17 @@ namespace DataToExcel
                     StartButtonText = "开始DPAT INK",
                     SelectPrimaryAction = f => f.SelectDpatTskFiles(),
                     SelectSecondaryAction = f => f.SelectDpatCsvFiles()
+                },
+                [(int)Mode.DataFormatConversion] = new ModeUi
+                {
+                    PrimaryLabelText = "选择CSV文件（最多25个）",
+                    SecondaryLabelText = "输出目录：使用下方保存位置",
+                    DescriptionText = "说明：\r\n选择源CSV文件后，按格式要求生成目标CSV文件。\r\n单次最多支持25个文件，输出文件保存到下方保存位置。\r\n",
+                    PrimaryBrowseText = "选择CSV",
+                    SecondaryBrowseText = "-",
+                    SecondaryBrowseEnabled = false,
+                    StartButtonText = "开始转换",
+                    SelectPrimaryAction = f => f.SelectDataConversionCsvFiles()
                 }
             };
 
@@ -206,6 +218,18 @@ namespace DataToExcel
                         }
                         break;
 
+                    case 4: // 数据格式转换
+                        if (firstFileList != null && firstFileList.Count > 0)
+                        {
+                            processor.ProcessBatch(firstFileList, null, comboBox1.SelectedIndex,
+                                UpdateRichTextBox, progressBar1);
+                        }
+                        else
+                        {
+                            MessageBox.Show(@"请先选择CSV文件", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                        break;
+
                     default:
                         MessageBox.Show(@"未选择处理方式", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
@@ -241,6 +265,8 @@ namespace DataToExcel
         // 根据模式切换 UI 文案与按钮行为
         private void ApplyMode(int selectedIndex)
         {
+            ResetSelectionState();
+
             ModeUi ui;
             if (!_modeUiMap.TryGetValue(selectedIndex, out ui))
             {
@@ -269,6 +295,13 @@ namespace DataToExcel
 
             _selectPrimaryAction = ui.SelectPrimaryAction == null ? (Action)null : (() => ui.SelectPrimaryAction(this));
             _selectSecondaryAction = ui.SelectSecondaryAction == null ? (Action)null : (() => ui.SelectSecondaryAction(this));
+        }
+
+        private void ResetSelectionState()
+        {
+            firstFileList = null;
+            secondFileList = null;
+            _inkTskPath = null;
         }
 
         private void SelectPrimary_Click(object sender, EventArgs e)
@@ -383,6 +416,32 @@ namespace DataToExcel
                 secondFileList = new List<string>(dialog.FileNames);
                 button2.Text = $"已选：{secondFileList.Count}个";
                 UpdateRichTextBox($"已加载 {secondFileList.Count} 个CSV文件\n");
+            }
+        }
+
+        private void SelectDataConversionCsvFiles()
+        {
+            _inkTskPath = null;
+            secondFileList = null;
+
+            using (var dialog = new OpenFileDialog())
+            {
+                dialog.Filter = "CSV文件|*.csv|所有文件|*.*";
+                dialog.Multiselect = true;
+
+                if (dialog.ShowDialog() != DialogResult.OK)
+                    return;
+
+                if (dialog.FileNames.Length > 25)
+                {
+                    MessageBox.Show(@"一次最多选择25个CSV文件", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                firstFileList = new List<string>(dialog.FileNames);
+                button6.Text = $"已选：{firstFileList.Count}个";
+                button2.Text = "输出目录：使用下方保存位置";
+                UpdateRichTextBox($"已加载 {firstFileList.Count} 个CSV文件\n");
             }
         }
 

@@ -37,6 +37,10 @@ namespace WindowsFormTool.TskUtil
             @"PROGRAM[\\/](?<name>[^\\/]+)",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+        private static readonly Regex LotIdCpSegmentRegex = new Regex(
+            @"-CP[1-3](?=-|$)",
+            RegexOptions.Compiled);
+
         public void ProcessSingle(string firstFile, string secondFile, Action<string> updateStatus, ProgressBar progressBar = null)
         {
             if (string.IsNullOrWhiteSpace(firstFile))
@@ -290,7 +294,7 @@ namespace WindowsFormTool.TskUtil
                 return false;
             }
 
-            var lotId = FirstNonEmpty(GetMetadataValue(metadata, "Lot"), GetMetadataValue(metadata, "Lot ID"));
+            var lotId = NormalizeLotId(FirstNonEmpty(GetMetadataValue(metadata, "Lot"), GetMetadataValue(metadata, "Lot ID")));
             var waferId = FirstNonEmpty(GetMetadataValue(metadata, "Serial ID"), GetMetadataValue(metadata, "Wafer ID"));
             var testMachine = FirstNonEmpty(GetMetadataValue(metadata, "TestMachine"), GetMetadataValue(metadata, "Station"));
             var computerName = GetMetadataValue(metadata, "ComputerName");
@@ -372,12 +376,6 @@ namespace WindowsFormTool.TskUtil
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(document.ComputerName))
-            {
-                errorMessage = "缺少 ComputerName";
-                return false;
-            }
-
             if (string.IsNullOrWhiteSpace(document.WaferId))
             {
                 errorMessage = "缺少 Serial ID";
@@ -385,14 +383,15 @@ namespace WindowsFormTool.TskUtil
             }
 
             var timeCode = document.StartTime.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
+            var waferIdForFileName = GetWaferIdForFileName(document.WaferId);
             outputFileName = string.Format(
                 CultureInfo.InvariantCulture,
                 "IO#{0}#{1}#{2}#OI{3}-{4}_ALL_{5}.csv",
                 document.TpVersion,
                 document.TestMachine,
                 string.IsNullOrWhiteSpace(document.ProberCardId) ? "NA" : document.ProberCardId,
-                document.ComputerName,
-                document.WaferId,
+                document.LotId,
+                waferIdForFileName,
                 timeCode);
             return true;
         }
@@ -725,6 +724,34 @@ namespace WindowsFormTool.TskUtil
             }
 
             return Path.GetFileNameWithoutExtension(fileName.Trim());
+        }
+
+        private static string NormalizeLotId(string lotId)
+        {
+            if (string.IsNullOrWhiteSpace(lotId))
+            {
+                return string.Empty;
+            }
+
+            return LotIdCpSegmentRegex.Replace(lotId.Trim(), string.Empty).Trim();
+        }
+
+        private static string GetWaferIdForFileName(string waferId)
+        {
+            if (string.IsNullOrWhiteSpace(waferId))
+            {
+                return string.Empty;
+            }
+
+            var trimmedWaferId = waferId.Trim();
+            var separatorIndex = trimmedWaferId.LastIndexOf('-');
+            if (separatorIndex < 0 || separatorIndex == trimmedWaferId.Length - 1)
+            {
+                return trimmedWaferId;
+            }
+
+            var trailingSegment = trimmedWaferId.Substring(separatorIndex + 1);
+            return trailingSegment.All(char.IsDigit) ? trailingSegment : trimmedWaferId;
         }
 
         private static string GetUniqueOutputPath(string outputDirectory, string outputFileName)

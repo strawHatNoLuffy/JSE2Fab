@@ -283,7 +283,8 @@ namespace DataToExcel
             "TSK和TSK合并",
             "TSK INK",
             "TSK叠片",
-            "DPAT INK"});
+            "DPAT INK",
+            "数据格式转换"});
             this.comboBox1.Location = new System.Drawing.Point(0, 0);
             this.comboBox1.Name = "comboBox1";
             this.comboBox1.Size = new System.Drawing.Size(295, 26);
